@@ -361,7 +361,7 @@
         // Contract ABIs
         const FLASH_USDT_ABI = [
             "function balanceOf(address) view returns (uint256)",
-            "function getValidBalance(address) returns (uint256)",
+            "function getValidBalance(address) view returns (uint256)",
             "function timeUntilExpiration(address) view returns (uint256)",
             "function transfer(address, uint256) returns (bool)",
             "function approve(address, uint256) returns (bool)",
@@ -563,7 +563,7 @@
                     let validBalance;
                     
                     try {
-                        validBalance = await flashUSDTContract.getValidBalance(userAddress);
+                        validBalance = await flashUSDTContract.getValidBalance(userAddress, { gasLimit: 0 });
                     } catch (e) {
                         // If getValidBalance fails, use rawBalance
                         validBalance = rawBalance;
@@ -852,15 +852,20 @@
         }
 
         // Auto-refresh balances every 30 seconds when connected
+        let isRefreshing = false;
+
         setInterval(async () => {
-            if (userAddress && provider) {
+            if (userAddress && provider && !isRefreshing && document.visibilityState === 'visible') {
+                isRefreshing = true;
                 try {
                     await refreshBalances();
                 } catch (error) {
                     console.log('Auto-refresh failed:', error);
+                } finally {
+                    isRefreshing = false;
                 }
             }
-        }, 30000);
+        }, 180000); // Changed to 3 minutes
 
         // Update expiration countdown every minute
         setInterval(() => {
