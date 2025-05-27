@@ -28,7 +28,7 @@
             border-radius: 20px;
             padding: 40px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            max-width: 600px;
+            max-width: 700px;
             width: 100%;
         }
 
@@ -105,7 +105,7 @@
             font-weight: 500;
         }
 
-        .form-group input {
+        .form-group input, .form-group select {
             width: 100%;
             padding: 15px;
             border: 2px solid #e2e8f0;
@@ -115,7 +115,7 @@
             background: white;
         }
 
-        .form-group input:focus {
+        .form-group input:focus, .form-group select:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
@@ -154,6 +154,10 @@
             background: linear-gradient(135deg, #ed8936, #dd6b20);
         }
 
+        .btn-danger {
+            background: linear-gradient(135deg, #e53e3e, #c53030);
+        }
+
         .status {
             padding: 15px;
             border-radius: 10px;
@@ -179,23 +183,12 @@
             border-left: 4px solid #3182ce;
         }
 
-        .balance-display {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 20px;
-            border-radius: 15px;
-            text-align: center;
+        .network-info {
+            background: #e6fffa;
+            border-left: 4px solid #38b2ac;
+            padding: 15px;
+            border-radius: 10px;
             margin-bottom: 20px;
-        }
-
-        .balance-display h4 {
-            margin-bottom: 10px;
-            opacity: 0.9;
-        }
-
-        .balance-display .balance-amount {
-            font-size: 2em;
-            font-weight: bold;
         }
 
         .admin-section {
@@ -215,13 +208,52 @@
         .loading {
             animation: pulse 2s infinite;
         }
+
+        .contract-addresses {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .contract-addresses h4 {
+            margin-bottom: 10px;
+            color: #2d3748;
+        }
+
+        .contract-addresses div {
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .testnet-tools {
+            background: rgba(255, 193, 7, 0.1);
+            border: 2px solid #ffc107;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>⚡ FlashUSDT Exchange</h1>
-            <p>Convert between FlashUSDT and USDC instantly</p>
+            <p>Convert between FlashUSDT and USDC instantly on Sepolia</p>
+        </div>
+
+        <div class="network-info">
+            <strong>Network:</strong> Sepolia Testnet (Chain ID: 11155111)<br>
+            <strong>Status:</strong> <span id="networkStatus">Checking...</span>
+        </div>
+
+        <div class="contract-addresses">
+            <h4>Contract Addresses:</h4>
+            <div><strong>FlashUSDT:</strong> 0xaC890591CB93c74e0bF812Ed3d75D193E60a67BC</div>
+            <div><strong>Exchange:</strong> 0xe3650Fef4CEc89033952A61DEFf866AE100Ac33f</div>
+            <div><strong>USDC:</strong> 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238</div>
         </div>
 
         <div class="section">
@@ -230,20 +262,33 @@
             <button id="connectBtn" class="btn">Connect Wallet</button>
         </div>
 
+        <div id="testnetSection" class="section testnet-tools hidden">
+            <h3>🧪 Testnet Tools</h3>
+            <p style="margin-bottom: 15px;">Get test USDC tokens from the official Sepolia faucet:</p>
+            <button id="openFaucetBtn" class="btn btn-secondary">🚰 Open USDC Faucet</button>
+            <div style="margin-top: 15px; font-size: 0.9em; color: #666;">
+                Note: You'll need Sepolia ETH first. Get it from <a href="https://sepoliafaucet.com" target="_blank">sepoliafaucet.com</a>
+            </div>
+        </div>
+
         <div id="balanceSection" class="section hidden">
             <h3>💰 Your Balances</h3>
             <div class="info-grid">
                 <div class="info-item">
                     <div class="info-label">FlashUSDT Balance</div>
-                    <div id="flashBalance" class="info-value">0</div>
+                    <div id="flashBalance" class="info-value">Loading...</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">USDC Balance</div>
-                    <div id="usdcBalance" class="info-value">0</div>
+                    <div id="usdcBalance" class="info-value">Loading...</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Sepolia ETH</div>
+                    <div id="ethBalance" class="info-value">Loading...</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Time Until Expiration</div>
-                    <div id="expirationTime" class="info-value">N/A</div>
+                    <div id="expirationTime" class="info-value">Loading...</div>
                 </div>
             </div>
             <button id="refreshBtn" class="btn btn-secondary">🔄 Refresh Balances</button>
@@ -254,15 +299,18 @@
             
             <div class="form-group">
                 <label>Exchange Direction:</label>
-                <select id="exchangeDirection" class="form-group input" style="padding: 15px; width: 100%; border: 2px solid #e2e8f0; border-radius: 10px;">
-                    <option value="usd-to-flash">USDC → FlashUSDT</option>
-                    <option value="flash-to-usd">FlashUSDT → USDC</option>
+                <select id="exchangeDirection">
+                    <option value="usd-to-flash">USDC → FlashUSDT (Mint new FlashUSDT)</option>
+                    <option value="flash-to-usd">FlashUSDT → USDC (Redeem for USDC)</option>
                 </select>
             </div>
 
             <div class="form-group">
                 <label id="amountLabel">Amount (USDC):</label>
-                <input type="number" id="exchangeAmount" placeholder="Enter amount" step="0.000001">
+                <input type="number" id="exchangeAmount" placeholder="Enter amount" step="0.000001" min="0">
+                <div style="font-size: 0.8em; color: #666; margin-top: 5px;">
+                    Min: 1 USDC, Max: 10,000 USDC
+                </div>
             </div>
 
             <div id="exchangePreview" class="info-item">
@@ -270,16 +318,18 @@
                 <div id="previewAmount" class="info-value">0</div>
             </div>
 
-            <button id="approveBtn" class="btn btn-warning hidden">Approve USDC</button>
-            <button id="exchangeBtn" class="btn">Exchange</button>
+            <button id="approveBtn" class="btn btn-warning hidden">💳 Approve USDC Spending</button>
+            <button id="exchangeBtn" class="btn">🔄 Execute Exchange</button>
         </div>
 
         <div id="adminSection" class="section admin-section hidden">
             <h3>⚙️ Admin Functions</h3>
+            <p style="margin-bottom: 15px; color: #666;">These functions are only available to the contract owner.</p>
+            
             <div class="form-group">
                 <label>Deposit USDC Reserves:</label>
-                <input type="number" id="reserveAmount" placeholder="Amount to deposit">
-                <button id="depositBtn" class="btn btn-warning">Deposit Reserves</button>
+                <input type="number" id="reserveAmount" placeholder="Amount to deposit" step="0.000001" min="0">
+                <button id="depositBtn" class="btn btn-warning">💰 Deposit Reserves</button>
             </div>
             
             <div class="form-group">
@@ -289,11 +339,11 @@
             <div class="info-grid">
                 <div class="info-item">
                     <div class="info-label">Total Reserves</div>
-                    <div id="totalReserves" class="info-value">0</div>
+                    <div id="totalReserves" class="info-value">Loading...</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Total Issued</div>
-                    <div id="totalIssued" class="info-value">0</div>
+                    <div id="totalIssued" class="info-value">Loading...</div>
                 </div>
             </div>
         </div>
@@ -302,12 +352,13 @@
     </div>
 
     <script>
-        // Contract addresses - UPDATE THESE WITH YOUR DEPLOYED ADDRESSES
+        // Contract addresses - Sepolia testnet
         const FLASH_USDT_ADDRESS = '0xaC890591CB93c74e0bF812Ed3d75D193E60a67BC';
         const EXCHANGE_ADDRESS = '0xe3650Fef4CEc89033952A61DEFf866AE100Ac33f';
-        const USDC_ADDRESS = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238'; // Replace with your testnet USDC address
+        const USDC_ADDRESS = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
+        const SEPOLIA_CHAIN_ID = 11155111;
 
-        // Contract ABIs (simplified for this interface)
+        // Contract ABIs
         const FLASH_USDT_ABI = [
             "function balanceOf(address) view returns (uint256)",
             "function getValidBalance(address) returns (uint256)",
@@ -316,7 +367,8 @@
             "function approve(address, uint256) returns (bool)",
             "function allowance(address, address) view returns (uint256)",
             "function setExchange(address)",
-            "function owner() view returns (address)"
+            "function owner() view returns (address)",
+            "function decimals() view returns (uint8)"
         ];
 
         const EXCHANGE_ABI = [
@@ -335,15 +387,17 @@
             "function balanceOf(address) view returns (uint256)",
             "function approve(address, uint256) returns (bool)",
             "function allowance(address, address) view returns (uint256)",
-            "function decimals() view returns (uint8)"
+            "function decimals() view returns (uint8)",
+            "function symbol() view returns (string)",
+            "function name() view returns (string)"
         ];
 
         let provider, signer, userAddress;
         let flashUSDTContract, exchangeContract, usdcContract;
+        let isOwner = false;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            // Check for MetaMask immediately
             checkMetaMaskAvailability();
             setupEventListeners();
         });
@@ -353,12 +407,6 @@
             
             if (typeof window.ethereum === 'undefined') {
                 statusDiv.innerHTML = '❌ MetaMask not detected. Please install MetaMask extension and refresh this page.';
-                statusDiv.className = 'status error';
-                return;
-            }
-
-            if (!window.ethereum.isMetaMask) {
-                statusDiv.innerHTML = '⚠️ Please use MetaMask wallet';
                 statusDiv.className = 'status error';
                 return;
             }
@@ -376,28 +424,83 @@
             document.getElementById('exchangeBtn').addEventListener('click', executeExchange);
             document.getElementById('setupBtn').addEventListener('click', setupExchange);
             document.getElementById('depositBtn').addEventListener('click', depositReserves);
+            document.getElementById('openFaucetBtn').addEventListener('click', openUSDCFaucet);
+
+            // Listen for MetaMask account changes
+            if (window.ethereum) {
+                window.ethereum.on('accountsChanged', function (accounts) {
+                    if (accounts.length === 0) {
+                        // User disconnected wallet
+                        resetUI();
+                    } else {
+                        // User switched accounts
+                        connectWallet();
+                    }
+                });
+
+                window.ethereum.on('chainChanged', function (chainId) {
+                    // Reload the page when network changes
+                    window.location.reload();
+                });
+            }
+        }
+
+        function resetUI() {
+            userAddress = null;
+            provider = null;
+            signer = null;
+            isOwner = false;
+            
+            document.getElementById('connectionStatus').innerHTML = 'Click "Connect Wallet" to get started';
+            document.getElementById('connectionStatus').className = 'status info';
+            document.getElementById('balanceSection').classList.add('hidden');
+            document.getElementById('exchangeSection').classList.add('hidden');
+            document.getElementById('testnetSection').classList.add('hidden');
+            document.getElementById('adminSection').classList.add('hidden');
+        }
+
+        function openUSDCFaucet() {
+            window.open('https://faucet.circle.com/', '_blank');
         }
 
         async function connectWallet() {
             try {
-                // Enhanced MetaMask detection
                 if (typeof window.ethereum === 'undefined') {
                     showStatus('MetaMask is not installed. Please install MetaMask extension.', 'error');
                     return;
                 }
 
-                // Wait a bit for MetaMask to fully load
-                await new Promise(resolve => setTimeout(resolve, 100));
-
-                if (!window.ethereum.isMetaMask) {
-                    showStatus('Please use MetaMask wallet', 'error');
-                    return;
-                }
-
+                // Request account access
                 await window.ethereum.request({ method: 'eth_requestAccounts' });
+                
+                // Initialize provider and signer
                 provider = new ethers.BrowserProvider(window.ethereum);
                 signer = await provider.getSigner();
                 userAddress = await signer.getAddress();
+
+                // Check if we're on Sepolia
+                const network = await provider.getNetwork();
+                const networkStatus = document.getElementById('networkStatus');
+                
+                if (Number(network.chainId) !== SEPOLIA_CHAIN_ID) {
+                    networkStatus.textContent = `Wrong network! Please switch to Sepolia (${network.chainId})`;
+                    networkStatus.style.color = '#e53e3e';
+                    
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: '0xaa36a7' }], // Sepolia chain ID in hex
+                        });
+                        // Refresh after network switch
+                        location.reload();
+                    } catch (switchError) {
+                        showStatus('Please manually switch to Sepolia network in MetaMask', 'error');
+                        return;
+                    }
+                } else {
+                    networkStatus.textContent = 'Connected to Sepolia ✅';
+                    networkStatus.style.color = '#38a169';
+                }
 
                 // Initialize contracts
                 flashUSDTContract = new ethers.Contract(FLASH_USDT_ADDRESS, FLASH_USDT_ABI, signer);
@@ -406,55 +509,115 @@
 
                 showStatus(`Connected: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`, 'success');
                 
+                // Show relevant sections
                 document.getElementById('balanceSection').classList.remove('hidden');
                 document.getElementById('exchangeSection').classList.remove('hidden');
+                document.getElementById('testnetSection').classList.remove('hidden');
                 
                 // Check if user is owner
                 try {
                     const owner = await flashUSDTContract.owner();
                     if (owner.toLowerCase() === userAddress.toLowerCase()) {
                         document.getElementById('adminSection').classList.remove('hidden');
+                        isOwner = true;
+                        showStatus('Admin access detected! 🔧', 'info');
                     }
                 } catch (e) {
-                    console.log('Not owner or error checking ownership');
+                    console.log('Not owner or error checking ownership:', e);
                 }
 
                 await refreshBalances();
                 
             } catch (error) {
+                console.error('Connection error:', error);
                 showStatus(`Connection failed: ${error.message}`, 'error');
             }
         }
 
         async function refreshBalances() {
-            if (!userAddress) return;
+            if (!userAddress || !provider) return;
 
             document.getElementById('refreshBtn').classList.add('loading');
             
             try {
-                // Get FlashUSDT balance
-                const flashBalance = await flashUSDTContract.getValidBalance(userAddress);
-                document.getElementById('flashBalance').textContent = ethers.formatUnits(flashBalance, 6) + ' fUSDT';
+                // Get ETH balance
+                const ethBalance = await provider.getBalance(userAddress);
+                document.getElementById('ethBalance').textContent = 
+                    parseFloat(ethers.formatEther(ethBalance)).toFixed(4) + ' ETH';
 
-                // Get USDC balance
-                const usdcBalance = await usdcContract.balanceOf(userAddress);
-                document.getElementById('usdcBalance').textContent = ethers.formatUnits(usdcBalance, 6) + ' USDC';
+                // Get USDC balance with error handling
+                try {
+                    const usdcBalance = await usdcContract.balanceOf(userAddress);
+                    const usdcDecimals = await usdcContract.decimals();
+                    document.getElementById('usdcBalance').textContent = 
+                        parseFloat(ethers.formatUnits(usdcBalance, usdcDecimals)).toFixed(6) + ' USDC';
+                } catch (error) {
+                    console.error('Error getting USDC balance:', error);
+                    document.getElementById('usdcBalance').textContent = 'Error loading USDC';
+                }
+
+                // Get FlashUSDT balance with error handling
+                try {
+                    // Try both balanceOf and getValidBalance
+                    const rawBalance = await flashUSDTContract.balanceOf(userAddress);
+                    let validBalance;
+                    
+                    try {
+                        validBalance = await flashUSDTContract.getValidBalance(userAddress);
+                    } catch (e) {
+                        // If getValidBalance fails, use rawBalance
+                        validBalance = rawBalance;
+                    }
+                    
+                    const flashDecimals = await flashUSDTContract.decimals();
+                    const formattedBalance = parseFloat(ethers.formatUnits(validBalance, flashDecimals)).toFixed(6);
+                    document.getElementById('flashBalance').textContent = formattedBalance + ' fUSDT';
+                    
+                    // Show raw balance if different
+                    if (rawBalance > validBalance) {
+                        document.getElementById('flashBalance').textContent += 
+                            ` (${parseFloat(ethers.formatUnits(rawBalance, flashDecimals)).toFixed(6)} raw)`;
+                    }
+                } catch (error) {
+                    console.error('Error getting FlashUSDT balance:', error);
+                    document.getElementById('flashBalance').textContent = 'Error loading fUSDT';
+                }
 
                 // Get expiration time
-                const timeLeft = await flashUSDTContract.timeUntilExpiration(userAddress);
-                const timeLeftHours = parseInt(timeLeft) / 3600;
-                document.getElementById('expirationTime').textContent = 
-                    timeLeftHours > 0 ? `${timeLeftHours.toFixed(1)} hours` : 'Expired/None';
+                try {
+                    const timeLeft = await flashUSDTContract.timeUntilExpiration(userAddress);
+                    const timeLeftSeconds = Number(timeLeft);
+                    if (timeLeftSeconds > 0) {
+                        const hours = Math.floor(timeLeftSeconds / 3600);
+                        const minutes = Math.floor((timeLeftSeconds % 3600) / 60);
+                        document.getElementById('expirationTime').textContent = 
+                            `${hours}h ${minutes}m`;
+                    } else {
+                        document.getElementById('expirationTime').textContent = 'None/Expired';
+                    }
+                } catch (error) {
+                    console.error('Error getting expiration time:', error);
+                    document.getElementById('expirationTime').textContent = 'Error loading';
+                }
 
                 // Admin data if applicable
-                if (!document.getElementById('adminSection').classList.contains('hidden')) {
-                    const reserves = await exchangeContract.totalReserves();
-                    const issued = await exchangeContract.totalFlashUSDTIssued();
-                    document.getElementById('totalReserves').textContent = ethers.formatUnits(reserves, 6) + ' USDC';
-                    document.getElementById('totalIssued').textContent = ethers.formatUnits(issued, 6) + ' fUSDT';
+                if (isOwner) {
+                    try {
+                        const reserves = await exchangeContract.totalReserves();
+                        const issued = await exchangeContract.totalFlashUSDTIssued();
+                        document.getElementById('totalReserves').textContent = 
+                            parseFloat(ethers.formatUnits(reserves, 6)).toFixed(6) + ' USDC';
+                        document.getElementById('totalIssued').textContent = 
+                            parseFloat(ethers.formatUnits(issued, 6)).toFixed(6) + ' fUSDT';
+                    } catch (error) {
+                        console.error('Error getting admin data:', error);
+                        document.getElementById('totalReserves').textContent = 'Error loading';
+                        document.getElementById('totalIssued').textContent = 'Error loading';
+                    }
                 }
 
             } catch (error) {
+                console.error('Error refreshing balances:', error);
                 showStatus(`Error refreshing balances: ${error.message}`, 'error');
             } finally {
                 document.getElementById('refreshBtn').classList.remove('loading');
@@ -491,13 +654,16 @@
                 if (direction === 'usd-to-flash') {
                     const usdAmount = ethers.parseUnits(amount, 6);
                     preview = await exchangeContract.getFlashUSDTAmount(usdAmount);
-                    document.getElementById('previewAmount').textContent = ethers.formatUnits(preview, 6) + ' fUSDT';
+                    document.getElementById('previewAmount').textContent = 
+                        parseFloat(ethers.formatUnits(preview, 6)).toFixed(6) + ' fUSDT';
                 } else {
                     const flashAmount = ethers.parseUnits(amount, 6);
                     preview = await exchangeContract.getUSDAmount(flashAmount);
-                    document.getElementById('previewAmount').textContent = ethers.formatUnits(preview, 6) + ' USDC';
+                    document.getElementById('previewAmount').textContent = 
+                        parseFloat(ethers.formatUnits(preview, 6)).toFixed(6) + ' USDC';
                 }
             } catch (error) {
+                console.error('Error calculating preview:', error);
                 document.getElementById('previewAmount').textContent = 'Error calculating';
             }
         }
@@ -512,11 +678,22 @@
             try {
                 document.getElementById('approveBtn').classList.add('loading');
                 const usdAmount = ethers.parseUnits(amount, 6);
+                
+                // Check current allowance
+                const currentAllowance = await usdcContract.allowance(userAddress, EXCHANGE_ADDRESS);
+                if (currentAllowance >= usdAmount) {
+                    showStatus('USDC already approved for this amount', 'success');
+                    return;
+                }
+                
                 const tx = await usdcContract.approve(EXCHANGE_ADDRESS, usdAmount);
-                showStatus('Approval transaction sent...', 'info');
+                showStatus('Approval transaction sent... Please wait for confirmation', 'info');
+                
                 await tx.wait();
-                showStatus('USDC approved successfully!', 'success');
+                showStatus('USDC approved successfully! ✅', 'success');
+                
             } catch (error) {
+                console.error('Approval error:', error);
                 showStatus(`Approval failed: ${error.message}`, 'error');
             } finally {
                 document.getElementById('approveBtn').classList.remove('loading');
@@ -527,8 +704,8 @@
             const amount = document.getElementById('exchangeAmount').value;
             const direction = document.getElementById('exchangeDirection').value;
             
-            if (!amount) {
-                showStatus('Please enter an amount', 'error');
+            if (!amount || parseFloat(amount) <= 0) {
+                showStatus('Please enter a valid amount', 'error');
                 return;
             }
 
@@ -538,21 +715,47 @@
                 let tx;
                 if (direction === 'usd-to-flash') {
                     const usdAmount = ethers.parseUnits(amount, 6);
+                    
+                    // Check USDC balance
+                    const usdcBalance = await usdcContract.balanceOf(userAddress);
+                    if (usdcBalance < usdAmount) {
+                        showStatus('Insufficient USDC balance', 'error');
+                        return;
+                    }
+                    
+                    // Check allowance
+                    const allowance = await usdcContract.allowance(userAddress, EXCHANGE_ADDRESS);
+                    if (allowance < usdAmount) {
+                        showStatus('Please approve USDC spending first', 'error');
+                        return;
+                    }
+                    
                     tx = await exchangeContract.exchangeUSDToFlashUSDT(usdAmount);
-                    showStatus('Converting USDC to FlashUSDT...', 'info');
+                    showStatus('Converting USDC to FlashUSDT... Please wait for confirmation', 'info');
                 } else {
                     const flashAmount = ethers.parseUnits(amount, 6);
+                    
+                    // Check FlashUSDT balance
+                    const flashBalance = await flashUSDTContract.getValidBalance(userAddress);
+                    if (flashBalance < flashAmount) {
+                        showStatus('Insufficient FlashUSDT balance', 'error');
+                        return;
+                    }
+                    
                     tx = await exchangeContract.exchangeFlashUSDTToUSD(flashAmount);
-                    showStatus('Converting FlashUSDT to USDC...', 'info');
+                    showStatus('Converting FlashUSDT to USDC... Please wait for confirmation', 'info');
                 }
                 
-                await tx.wait();
-                showStatus('Exchange completed successfully!', 'success');
-                await refreshBalances();
+                const receipt = await tx.wait();
+                showStatus(`Exchange completed successfully! ✅ (Tx: ${receipt.hash.slice(0, 10)}...)`, 'success');
+                
+                // Clear form and refresh
                 document.getElementById('exchangeAmount').value = '';
                 updatePreview();
+                await refreshBalances();
                 
             } catch (error) {
+                console.error('Exchange error:', error);
                 showStatus(`Exchange failed: ${error.message}`, 'error');
             } finally {
                 document.getElementById('exchangeBtn').classList.remove('loading');
@@ -563,10 +766,13 @@
             try {
                 document.getElementById('setupBtn').classList.add('loading');
                 const tx = await flashUSDTContract.setExchange(EXCHANGE_ADDRESS);
-                showStatus('Setting up exchange connection...', 'info');
+                showStatus('Setting up exchange connection... Please wait for confirmation', 'info');
+                
                 await tx.wait();
-                showStatus('Exchange connection established!', 'success');
+                showStatus('Exchange connection established! ✅', 'success');
+                
             } catch (error) {
+                console.error('Setup error:', error);
                 showStatus(`Setup failed: ${error.message}`, 'error');
             } finally {
                 document.getElementById('setupBtn').classList.remove('loading');
@@ -575,30 +781,58 @@
 
         async function depositReserves() {
             const amount = document.getElementById('reserveAmount').value;
-            if (!amount) {
-                showStatus('Please enter reserve amount', 'error');
+            if (!amount || parseFloat(amount) <= 0) {
+                showStatus('Please enter a valid reserve amount', 'error');
                 return;
             }
 
             try {
                 document.getElementById('depositBtn').classList.add('loading');
                 
-                // First approve USDC
                 const usdAmount = ethers.parseUnits(amount, 6);
-                const approveTx = await usdcContract.approve(EXCHANGE_ADDRESS, usdAmount);
-                showStatus('Approving USDC for deposit...', 'info');
-                await approveTx.wait();
                 
-                // Then deposit
-                const depositTx = await exchangeContract.depositReserves(usdAmount);
-                showStatus('Depositing reserves...', 'info');
-                await depositTx.wait();
+                // Check USDC balance
+                const usdcBalance = await usdcContract.balanceOf(userAddress);
+                if (usdcBalance < usdAmount) {
+                    showStatus('Insufficient USDC balance for deposit', 'error');
+                    return;
+                }
                 
-                showStatus('Reserves deposited successfully!', 'success');
-                await refreshBalances();
+                // Check USDC allowance for exchange contract
+                const allowance = await usdcContract.allowance(userAddress, EXCHANGE_ADDRESS);
+                if (allowance < usdAmount) {
+                    showStatus('Please approve USDC spending for exchange contract first', 'error');
+                    
+                    // Auto-approve if user wants
+                    const approve = confirm('Would you like to approve USDC spending now?');
+                    if (approve) {
+                        try {
+                            const approveTx = await usdcContract.approve(EXCHANGE_ADDRESS, usdAmount);
+                            showStatus('Approving USDC... Please wait for confirmation', 'info');
+                            await approveTx.wait();
+                            showStatus('USDC approved! Now depositing reserves...', 'info');
+                        } catch (approveError) {
+                            showStatus(`Approval failed: ${approveError.message}`, 'error');
+                            return;
+                        }
+                    } else {
+                        return;
+                    }
+                }
+                
+                // Deposit reserves
+                const tx = await exchangeContract.depositReserves(usdAmount);
+                showStatus('Depositing reserves... Please wait for confirmation', 'info');
+                
+                await tx.wait();
+                showStatus(`Successfully deposited ${amount} USDC as reserves! ✅`, 'success');
+                
+                // Clear form and refresh
                 document.getElementById('reserveAmount').value = '';
+                await refreshBalances();
                 
             } catch (error) {
+                console.error('Deposit error:', error);
                 showStatus(`Deposit failed: ${error.message}`, 'error');
             } finally {
                 document.getElementById('depositBtn').classList.remove('loading');
@@ -609,13 +843,36 @@
             const statusDiv = document.getElementById('statusDiv');
             statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
             
-            // Auto-clear after 5 seconds for non-error messages
-            if (type !== 'error') {
+            // Auto-clear success messages after 5 seconds
+            if (type === 'success') {
                 setTimeout(() => {
                     statusDiv.innerHTML = '';
                 }, 5000);
             }
         }
+
+        // Auto-refresh balances every 30 seconds when connected
+        setInterval(async () => {
+            if (userAddress && provider) {
+                try {
+                    await refreshBalances();
+                } catch (error) {
+                    console.log('Auto-refresh failed:', error);
+                }
+            }
+        }, 30000);
+
+        // Update expiration countdown every minute
+        setInterval(() => {
+            if (userAddress && flashUSDTContract) {
+                try {
+                    // This will be updated on next refresh cycle
+                    // Just to keep the display current
+                } catch (error) {
+                    console.log('Expiration update failed:', error);
+                }
+            }
+        }, 60000);
     </script>
 </body>
 </html>
