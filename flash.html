@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlashUSDT Exchange</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #2d3748;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 1.1em;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 25px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .section h3 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .info-label {
+            font-size: 0.9em;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 1.1em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2d3748;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ed8936, #dd6b20);
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #c6f6d5;
+            color: #22543d;
+            border-left: 4px solid #48bb78;
+        }
+
+        .status.error {
+            background: #fed7d7;
+            color: #742a2a;
+            border-left: 4px solid #e53e3e;
+        }
+
+        .status.info {
+            background: #bee3f8;
+            color: #2a4365;
+            border-left: 4px solid #3182ce;
+        }
+
+        .balance-display {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .balance-display h4 {
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+
+        .balance-display .balance-amount {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .admin-section {
+            border: 2px solid #ed8936;
+            background: rgba(237, 137, 54, 0.05);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .loading {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚡ FlashUSDT Exchange</h1>
+            <p>Convert between FlashUSDT and USDC instantly</p>
+        </div>
+
+        <div class="section">
+            <h3>🔗 Connection Status</h3>
+            <div id="connectionStatus" class="status info">Click "Connect Wallet" to get started</div>
+            <button id="connectBtn" class="btn">Connect Wallet</button>
+        </div>
+
+        <div id="balanceSection" class="section hidden">
+            <h3>💰 Your Balances</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">FlashUSDT Balance</div>
+                    <div id="flashBalance" class="info-value">0</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">USDC Balance</div>
+                    <div id="usdcBalance" class="info-value">0</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Time Until Expiration</div>
+                    <div id="expirationTime" class="info-value">N/A</div>
+                </div>
+            </div>
+            <button id="refreshBtn" class="btn btn-secondary">🔄 Refresh Balances</button>
+        </div>
+
+        <div id="exchangeSection" class="section hidden">
+            <h3>🔄 Exchange</h3>
+            
+            <div class="form-group">
+                <label>Exchange Direction:</label>
+                <select id="exchangeDirection" class="form-group input" style="padding: 15px; width: 100%; border: 2px solid #e2e8f0; border-radius: 10px;">
+                    <option value="usd-to-flash">USDC → FlashUSDT</option>
+                    <option value="flash-to-usd">FlashUSDT → USDC</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label id="amountLabel">Amount (USDC):</label>
+                <input type="number" id="exchangeAmount" placeholder="Enter amount" step="0.000001">
+            </div>
+
+            <div id="exchangePreview" class="info-item">
+                <div class="info-label">You will receive:</div>
+                <div id="previewAmount" class="info-value">0</div>
+            </div>
+
+            <button id="approveBtn" class="btn btn-warning hidden">Approve USDC</button>
+            <button id="exchangeBtn" class="btn">Exchange</button>
+        </div>
+
+        <div id="adminSection" class="section admin-section hidden">
+            <h3>⚙️ Admin Functions</h3>
+            <div class="form-group">
+                <label>Deposit USDC Reserves:</label>
+                <input type="number" id="reserveAmount" placeholder="Amount to deposit">
+                <button id="depositBtn" class="btn btn-warning">Deposit Reserves</button>
+            </div>
+            
+            <div class="form-group">
+                <button id="setupBtn" class="btn btn-secondary">🔧 Setup Exchange Connection</button>
+            </div>
+            
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Total Reserves</div>
+                    <div id="totalReserves" class="info-value">0</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Total Issued</div>
+                    <div id="totalIssued" class="info-value">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="statusDiv"></div>
+    </div>
+
+    <script>
+        // Contract addresses - UPDATE THESE WITH YOUR DEPLOYED ADDRESSES
+        const FLASH_USDT_ADDRESS = '0xaC890591CB93c74e0bF812Ed3d75D193E60a67BC';
+        const EXCHANGE_ADDRESS = '0xe3650Fef4CEc89033952A61DEFf866AE100Ac33f';
+        const USDC_ADDRESS = '0xA0b86a33E6417C7C4cd1c0c4dC8C16c16Ca77c47'; // Replace with your testnet USDC address
+
+        // Contract ABIs (simplified for this interface)
+        const FLASH_USDT_ABI = [
+            "function balanceOf(address) view returns (uint256)",
+            "function getValidBalance(address) returns (uint256)",
+            "function timeUntilExpiration(address) view returns (uint256)",
+            "function transfer(address, uint256) returns (bool)",
+            "function approve(address, uint256) returns (bool)",
+            "function allowance(address, address) view returns (uint256)",
+            "function setExchange(address)",
+            "function owner() view returns (address)"
+        ];
+
+        const EXCHANGE_ABI = [
+            "function exchangeUSDToFlashUSDT(uint256)",
+            "function exchangeFlashUSDTToUSD(uint256)",
+            "function getUSDAmount(uint256) view returns (uint256)",
+            "function getFlashUSDTAmount(uint256) view returns (uint256)",
+            "function canExchangeToUSD(uint256) view returns (bool, string)",
+            "function depositReserves(uint256)",
+            "function totalReserves() view returns (uint256)",
+            "function totalFlashUSDTIssued() view returns (uint256)",
+            "function owner() view returns (address)"
+        ];
+
+        const ERC20_ABI = [
+            "function balanceOf(address) view returns (uint256)",
+            "function approve(address, uint256) returns (bool)",
+            "function allowance(address, address) view returns (uint256)",
+            "function decimals() view returns (uint8)"
+        ];
+
+        let provider, signer, userAddress;
+        let flashUSDTContract, exchangeContract, usdcContract;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for MetaMask immediately
+            checkMetaMaskAvailability();
+            setupEventListeners();
+        });
+
+        function checkMetaMaskAvailability() {
+            const statusDiv = document.getElementById('connectionStatus');
+            
+            if (typeof window.ethereum === 'undefined') {
+                statusDiv.innerHTML = '❌ MetaMask not detected. Please install MetaMask extension and refresh this page.';
+                statusDiv.className = 'status error';
+                return;
+            }
+
+            if (!window.ethereum.isMetaMask) {
+                statusDiv.innerHTML = '⚠️ Please use MetaMask wallet';
+                statusDiv.className = 'status error';
+                return;
+            }
+
+            statusDiv.innerHTML = '✅ MetaMask detected. Click "Connect Wallet" to continue.';
+            statusDiv.className = 'status info';
+        }
+
+        function setupEventListeners() {
+            document.getElementById('connectBtn').addEventListener('click', connectWallet);
+            document.getElementById('refreshBtn').addEventListener('click', refreshBalances);
+            document.getElementById('exchangeDirection').addEventListener('change', updateExchangeUI);
+            document.getElementById('exchangeAmount').addEventListener('input', updatePreview);
+            document.getElementById('approveBtn').addEventListener('click', approveUSDC);
+            document.getElementById('exchangeBtn').addEventListener('click', executeExchange);
+            document.getElementById('setupBtn').addEventListener('click', setupExchange);
+            document.getElementById('depositBtn').addEventListener('click', depositReserves);
+        }
+
+        async function connectWallet() {
+            try {
+                // Enhanced MetaMask detection
+                if (typeof window.ethereum === 'undefined') {
+                    showStatus('MetaMask is not installed. Please install MetaMask extension.', 'error');
+                    return;
+                }
+
+                // Wait a bit for MetaMask to fully load
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                if (!window.ethereum.isMetaMask) {
+                    showStatus('Please use MetaMask wallet', 'error');
+                    return;
+                }
+
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                provider = new ethers.BrowserProvider(window.ethereum);
+                signer = await provider.getSigner();
+                userAddress = await signer.getAddress();
+
+                // Initialize contracts
+                flashUSDTContract = new ethers.Contract(FLASH_USDT_ADDRESS, FLASH_USDT_ABI, signer);
+                exchangeContract = new ethers.Contract(EXCHANGE_ADDRESS, EXCHANGE_ABI, signer);
+                usdcContract = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, signer);
+
+                showStatus(`Connected: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`, 'success');
+                
+                document.getElementById('balanceSection').classList.remove('hidden');
+                document.getElementById('exchangeSection').classList.remove('hidden');
+                
+                // Check if user is owner
+                try {
+                    const owner = await flashUSDTContract.owner();
+                    if (owner.toLowerCase() === userAddress.toLowerCase()) {
+                        document.getElementById('adminSection').classList.remove('hidden');
+                    }
+                } catch (e) {
+                    console.log('Not owner or error checking ownership');
+                }
+
+                await refreshBalances();
+                
+            } catch (error) {
+                showStatus(`Connection failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function refreshBalances() {
+            if (!userAddress) return;
+
+            document.getElementById('refreshBtn').classList.add('loading');
+            
+            try {
+                // Get FlashUSDT balance
+                const flashBalance = await flashUSDTContract.getValidBalance(userAddress);
+                document.getElementById('flashBalance').textContent = ethers.formatUnits(flashBalance, 6) + ' fUSDT';
+
+                // Get USDC balance
+                const usdcBalance = await usdcContract.balanceOf(userAddress);
+                document.getElementById('usdcBalance').textContent = ethers.formatUnits(usdcBalance, 6) + ' USDC';
+
+                // Get expiration time
+                const timeLeft = await flashUSDTContract.timeUntilExpiration(userAddress);
+                const timeLeftHours = parseInt(timeLeft) / 3600;
+                document.getElementById('expirationTime').textContent = 
+                    timeLeftHours > 0 ? `${timeLeftHours.toFixed(1)} hours` : 'Expired/None';
+
+                // Admin data if applicable
+                if (!document.getElementById('adminSection').classList.contains('hidden')) {
+                    const reserves = await exchangeContract.totalReserves();
+                    const issued = await exchangeContract.totalFlashUSDTIssued();
+                    document.getElementById('totalReserves').textContent = ethers.formatUnits(reserves, 6) + ' USDC';
+                    document.getElementById('totalIssued').textContent = ethers.formatUnits(issued, 6) + ' fUSDT';
+                }
+
+            } catch (error) {
+                showStatus(`Error refreshing balances: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('refreshBtn').classList.remove('loading');
+            }
+        }
+
+        function updateExchangeUI() {
+            const direction = document.getElementById('exchangeDirection').value;
+            const label = document.getElementById('amountLabel');
+            const approveBtn = document.getElementById('approveBtn');
+            
+            if (direction === 'usd-to-flash') {
+                label.textContent = 'Amount (USDC):';
+                approveBtn.classList.remove('hidden');
+            } else {
+                label.textContent = 'Amount (FlashUSDT):';
+                approveBtn.classList.add('hidden');
+            }
+            
+            updatePreview();
+        }
+
+        async function updatePreview() {
+            const amount = document.getElementById('exchangeAmount').value;
+            const direction = document.getElementById('exchangeDirection').value;
+            
+            if (!amount || !exchangeContract) {
+                document.getElementById('previewAmount').textContent = '0';
+                return;
+            }
+
+            try {
+                let preview;
+                if (direction === 'usd-to-flash') {
+                    const usdAmount = ethers.parseUnits(amount, 6);
+                    preview = await exchangeContract.getFlashUSDTAmount(usdAmount);
+                    document.getElementById('previewAmount').textContent = ethers.formatUnits(preview, 6) + ' fUSDT';
+                } else {
+                    const flashAmount = ethers.parseUnits(amount, 6);
+                    preview = await exchangeContract.getUSDAmount(flashAmount);
+                    document.getElementById('previewAmount').textContent = ethers.formatUnits(preview, 6) + ' USDC';
+                }
+            } catch (error) {
+                document.getElementById('previewAmount').textContent = 'Error calculating';
+            }
+        }
+
+        async function approveUSDC() {
+            const amount = document.getElementById('exchangeAmount').value;
+            if (!amount) {
+                showStatus('Please enter an amount first', 'error');
+                return;
+            }
+
+            try {
+                document.getElementById('approveBtn').classList.add('loading');
+                const usdAmount = ethers.parseUnits(amount, 6);
+                const tx = await usdcContract.approve(EXCHANGE_ADDRESS, usdAmount);
+                showStatus('Approval transaction sent...', 'info');
+                await tx.wait();
+                showStatus('USDC approved successfully!', 'success');
+            } catch (error) {
+                showStatus(`Approval failed: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('approveBtn').classList.remove('loading');
+            }
+        }
+
+        async function executeExchange() {
+            const amount = document.getElementById('exchangeAmount').value;
+            const direction = document.getElementById('exchangeDirection').value;
+            
+            if (!amount) {
+                showStatus('Please enter an amount', 'error');
+                return;
+            }
+
+            try {
+                document.getElementById('exchangeBtn').classList.add('loading');
+                
+                let tx;
+                if (direction === 'usd-to-flash') {
+                    const usdAmount = ethers.parseUnits(amount, 6);
+                    tx = await exchangeContract.exchangeUSDToFlashUSDT(usdAmount);
+                    showStatus('Converting USDC to FlashUSDT...', 'info');
+                } else {
+                    const flashAmount = ethers.parseUnits(amount, 6);
+                    tx = await exchangeContract.exchangeFlashUSDTToUSD(flashAmount);
+                    showStatus('Converting FlashUSDT to USDC...', 'info');
+                }
+                
+                await tx.wait();
+                showStatus('Exchange completed successfully!', 'success');
+                await refreshBalances();
+                document.getElementById('exchangeAmount').value = '';
+                updatePreview();
+                
+            } catch (error) {
+                showStatus(`Exchange failed: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('exchangeBtn').classList.remove('loading');
+            }
+        }
+
+        async function setupExchange() {
+            try {
+                document.getElementById('setupBtn').classList.add('loading');
+                const tx = await flashUSDTContract.setExchange(EXCHANGE_ADDRESS);
+                showStatus('Setting up exchange connection...', 'info');
+                await tx.wait();
+                showStatus('Exchange connection established!', 'success');
+            } catch (error) {
+                showStatus(`Setup failed: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('setupBtn').classList.remove('loading');
+            }
+        }
+
+        async function depositReserves() {
+            const amount = document.getElementById('reserveAmount').value;
+            if (!amount) {
+                showStatus('Please enter reserve amount', 'error');
+                return;
+            }
+
+            try {
+                document.getElementById('depositBtn').classList.add('loading');
+                
+                // First approve USDC
+                const usdAmount = ethers.parseUnits(amount, 6);
+                const approveTx = await usdcContract.approve(EXCHANGE_ADDRESS, usdAmount);
+                showStatus('Approving USDC for deposit...', 'info');
+                await approveTx.wait();
+                
+                // Then deposit
+                const depositTx = await exchangeContract.depositReserves(usdAmount);
+                showStatus('Depositing reserves...', 'info');
+                await depositTx.wait();
+                
+                showStatus('Reserves deposited successfully!', 'success');
+                await refreshBalances();
+                document.getElementById('reserveAmount').value = '';
+                
+            } catch (error) {
+                showStatus(`Deposit failed: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('depositBtn').classList.remove('loading');
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusDiv');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+            
+            // Auto-clear after 5 seconds for non-error messages
+            if (type !== 'error') {
+                setTimeout(() => {
+                    statusDiv.innerHTML = '';
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>
